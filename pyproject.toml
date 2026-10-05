@@ -1,0 +1,24 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "dgeo"
+version = "0.1.0"
+description = "Curation, calibration and geometry-drift tools for driving data (cross-dataset localization, Gaussian-splatting rig calibration, weather-edit drift scoring)"
+requires-python = ">=3.10"
+dependencies = [
+  "numpy", "scipy", "scikit-learn", "pandas", "pillow", "pyyaml", "matplotlib",
+  "opencv-python-headless", "torch", "transformers",
+]
+
+[project.optional-dependencies]
+gpu = ["gsplat", "diffusers", "accelerate", "safetensors"]
+zod = ["zod"]
+dev = ["pytest"]
+
+[tool.setuptools.packages.find]
+include = ["dgeo*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

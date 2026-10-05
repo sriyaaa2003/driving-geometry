@@ -1,0 +1,5 @@
+# Extra packages for the GPU parts (gs_calib.py, edit_controlnet.py)
+gsplat
+diffusers
+accelerate
+safetensors

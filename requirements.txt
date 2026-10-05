@@ -1,0 +1,12 @@
+# Core: CPU is enough for curation, the calibration studies and drift-metric validation.
+# PyTorch is installed separately so it matches the machine's CUDA (see LAB_GUIDE.md).
+numpy
+scipy
+scikit-learn
+pandas
+pillow
+pyyaml
+matplotlib
+opencv-python-headless
+transformers
+pytest

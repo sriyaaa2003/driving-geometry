@@ -1,0 +1,16 @@
+__pycache__/
+*.pyc
+.venv/
+venv/
+data/*
+!data/.gitkeep
+*.npz
+*.pt
+*.ckpt
+results/*.zip
+.pytest_cache/
+*.egg-info/
+
+results/demo_*/
+results/lab_check.json
+results/logs/
