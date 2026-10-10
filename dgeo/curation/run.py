@@ -3,8 +3,6 @@
 Real data:
   python -m dgeo.curation.run --emb dinov2=data/emb_dinov2.npz clip=data/emb_clip.npz \
       --manifest data/manifest.csv --tags weather,time_of_day,country_code --out results/curation
-No data needed:
-  python -m dgeo.curation.run --demo
 """
 from __future__ import annotations
 
@@ -106,20 +104,11 @@ def main():
     ap.add_argument("--rare-frac", type=float, default=0.05)
     ap.add_argument("--samplers", default=",".join(SAMPLERS))
     ap.add_argument("--out", default="results/curation")
-    ap.add_argument("--demo", action="store_true", help="use synthetic long-tailed embeddings")
     a = ap.parse_args()
 
-    if a.demo:
-        from dgeo.synth import make_synthetic_embeddings
-
-        e1, tags = make_synthetic_embeddings(n=6000, d=64, seed=0)
-        rng = np.random.default_rng(1)
-        e2 = e1 + 0.1 * rng.normal(size=e1.shape).astype(np.float32)
-        e2 /= np.linalg.norm(e2, axis=1, keepdims=True)
-        embs = {"synthA": e1, "synthB": e2}
-    else:
+    if True:
         if not a.emb or not a.manifest:
-            raise SystemExit("need --emb and --manifest (or --demo)")
+            raise SystemExit("need --emb and --manifest")
         man = pd.read_csv(a.manifest)
         embs = load_embeddings(a.emb, man)
         tags = {t: man[t].fillna("NA").astype(str).values for t in a.tags.split(",") if t}

@@ -3,7 +3,7 @@ import numpy as np
 from dgeo.curation.metrics import linear_cka, tag_metrics
 from dgeo.curation.samplers import SAMPLERS, water_fill
 from dgeo.retrieval import knn_cosine, recall_at_k
-from dgeo.synth import make_synthetic_embeddings, make_synthetic_vpr
+from tests.fixtures import make_synthetic_embeddings, make_synthetic_vpr
 
 
 def test_water_fill_respects_caps_and_budget():

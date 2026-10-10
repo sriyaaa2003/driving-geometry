@@ -46,7 +46,9 @@ def load_embedder(model_name: str = "facebook/dinov2-small", device: str | None 
 def embed_paths(paths, model_name="facebook/dinov2-small", batch_size=32, device=None,
                 cache: str | Path | None = None, ids=None) -> np.ndarray:
     """Embed image files in batches. If `cache` exists it is loaded; otherwise it is written (npz: emb, ids)."""
-    from PIL import Image
+    from PIL import Image, ImageFile
+
+    ImageFile.LOAD_TRUNCATED_IMAGES = True      # a few downloaded frames can be cut short; decode what is there
 
     if cache is not None and Path(cache).exists():
         return np.load(cache, allow_pickle=True)["emb"]

@@ -5,8 +5,7 @@ Checks (all on images with known edits):
   2. specificity:   benign appearance edits (fog / night / rain / blur) score far below corruptions of >= 2 px
   3. hallucination: edge_precision falls when structure that is not in the original is pasted in
 
-  python -m dgeo.drift.validate_metric                       # synthetic street images, CPU, ~1 min
-  python -m dgeo.drift.validate_metric --images data/real_imgs   # also run on real photos (jpg/png)
+  python -m dgeo.drift.validate_metric --images data/bdd/drift_images   # real dashcam photos, edits applied on top, CPU
 """
 from __future__ import annotations
 
@@ -21,7 +20,6 @@ from scipy.stats import spearmanr
 from dgeo.drift import synth_edits as E
 from dgeo.drift.metrics import all_metrics
 from dgeo.stats import bootstrap_ci, fmt_ci
-from dgeo.synth import make_street_image
 
 DRIFT_METRICS = ["dense_disp_px", "dense_disp_p90", "sparse_disp_px", "rel_rot_deg"]
 
@@ -36,7 +34,7 @@ def load_images(folder: str | None, n_synth: int):
                 s = 360 / w
                 imgs.append((p.stem, cv2.resize(im, (360, int(h * s)))))
     else:
-        imgs = [(f"synth{i}", make_street_image(seed=i)) for i in range(n_synth)]
+        raise SystemExit("pass --images <folder of real photos>")
     return imgs
 
 
@@ -103,11 +101,10 @@ def to_markdown(res, rows) -> str:
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--images", help="folder of real images (optional)")
-    ap.add_argument("--n-synth", type=int, default=6)
     ap.add_argument("--with-depth", action="store_true")
     ap.add_argument("--out", default="results/drift")
     a = ap.parse_args()
-    rows = run(load_images(a.images, a.n_synth), a.with_depth)
+    rows = run(load_images(a.images, 0), a.with_depth)
     res = analyse(rows)
     out = Path(a.out)
     out.mkdir(parents=True, exist_ok=True)

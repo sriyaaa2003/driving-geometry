@@ -1,54 +1,54 @@
 {
   "dose_response": {
-    "shift:dense_disp_px": 0.9810229431759453,
-    "shift:dense_disp_p90": 0.9810229431759453,
-    "shift:sparse_disp_px": 0.9810229431759453,
-    "shift:rel_rot_deg": 0.7664241743562072,
-    "rotate:dense_disp_px": 0.9810229431759453,
-    "rotate:dense_disp_p90": 0.9810229431759453,
-    "rotate:sparse_disp_px": 0.9810229431759453,
-    "rotate:rel_rot_deg": 0.8338695016995534,
-    "elastic:dense_disp_px": 0.9810229431759453,
-    "elastic:dense_disp_p90": 0.9810229431759453,
-    "elastic:sparse_disp_px": 0.9810229431759453,
-    "elastic:rel_rot_deg": 0.6437963064592142
+    "shift:dense_disp_px": 0.9798176710812309,
+    "shift:dense_disp_p90": 0.9765516121776269,
+    "shift:sparse_disp_px": 0.9798176710812309,
+    "shift:rel_rot_deg": 0.3628591441904158,
+    "rotate:dense_disp_px": 0.9798176710812309,
+    "rotate:dense_disp_p90": 0.9798176710812309,
+    "rotate:sparse_disp_px": 0.9798176710812309,
+    "rotate:rel_rot_deg": 0.8234823182287145,
+    "elastic:dense_disp_px": 0.9798176710812309,
+    "elastic:dense_disp_p90": 0.9798176710812309,
+    "elastic:sparse_disp_px": 0.9798176710812309,
+    "elastic:rel_rot_deg": 0.5334562875886701
   },
   "specificity": {
     "dense_disp_px": {
-      "benign_median": 0.2713125944137573,
-      "benign_p90": 1.2831868171691903,
-      "corrupt_ge2px_median": 2.452577590942383,
-      "separation_ratio": 9.0396746831522,
+      "benign_median": 0.09412291273474693,
+      "benign_p90": 0.293364480137825,
+      "corrupt_ge2px_median": 2.6344120502471924,
+      "separation_ratio": 27.989062107240315,
       "benign_nan_frac": 0.0
     },
     "sparse_disp_px": {
-      "benign_median": 0.14629453420639038,
-      "benign_p90": 0.526880323886871,
-      "corrupt_ge2px_median": 2.812525987625122,
-      "separation_ratio": 19.225092741040125,
-      "benign_nan_frac": 0.020833333333333332
+      "benign_median": 0.2629610598087311,
+      "benign_p90": 0.6602612257003787,
+      "corrupt_ge2px_median": 2.557375192642212,
+      "separation_ratio": 9.72529999119398,
+      "benign_nan_frac": 0.0
     }
   },
   "hallucination": {
     "n=1": [
-      0.9157837072614765,
-      0.8893728732504588,
-      0.9357780385476098
+      0.9656781494763728,
+      0.9556170925932557,
+      0.974851645511894
     ],
     "n=3": [
-      0.8614179548415545,
-      0.8416831055433494,
-      0.8812752712654217
+      0.9465194473490764,
+      0.9328089376504434,
+      0.9589459714110183
     ],
     "n=6": [
-      0.693585213436754,
-      0.6572644144010926,
-      0.7299060124724152
+      0.8896564218542031,
+      0.8666433562282265,
+      0.911880243078566
     ],
     "benign_edge_precision": [
-      0.8787377698668307,
-      0.820855258782054,
-      0.9305715267382548
+      0.9496539091589274,
+      0.9393000143636564,
+      0.9590004767201672
     ]
   }
 }

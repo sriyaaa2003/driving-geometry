@@ -1,89 +1,66 @@
 # driving-geometry
 
-Three connected research prototypes on driving data: **curating** it with foundation-model embeddings,
-**calibrating** a camera rig from the scene itself, and **measuring** whether generated weather edits keep the
-geometry. They share one library (`dgeo/`): embeddings, retrieval, camera models (pinhole and fisheye),
-pose-error metrics and bootstrap statistics.
+Two small studies on real dashcam data from [BDD100K](https://www.vis.xyz/bdd100k/) (the 10,000-image validation split, 9,992 downloaded;
+real photos with weather, time-of-day and scene labels).
 
-| # | Project | Question | Status |
-|---|---|---|---|
-| 1 | `dgeo.curation` | Which images are worth keeping? Score curation by held-out scenario tags and by cross-dataset localization recall under a database-size budget. | Algorithms, metrics and CLI tested on synthetic data. **Not yet run on real data.** |
-| 2 | `dgeo.calibration` | Which extrinsic directions does a drive actually constrain when calibrating a fisheye rig without a target? | CPU study done on a synthetic rig. Gaussian-splatting version written, **never run on a GPU**. |
-| 3 | `dgeo.drift` | Did a weather edit keep the road where it was? A geometry-drift metric, validated on edits with known effect. | Metric validated on synthetic images. ControlNet editing script written, **never run**. |
+## 1. Which images are worth keeping? Data curation with foundation-model embeddings
 
-Everything below labelled *synthetic* is a property of the method on a controlled scene, not a result on a real vehicle.
+Pick a budget of 1%, 5% or 10% of the images using only their DINOv2-small or CLIP ViT-B/32 embeddings (never the labels), then ask how well
+the picks cover the **rare scenarios**: scene types that make up at most 5% of the data (parking lot, tunnel, gas station, unlabelled;
+7 to 53 images each). Five samplers, five seeds; intervals are bootstrap.
 
-## Findings so far (synthetic data)
+Rare-scene lift at a 5% budget (share of the selection over share of the dataset; 1.0 = random) and coverage of rare scenes:
 
-**Project 3 — the drift metric works on controlled edits.** Over 4 images and 30 edits each: dense optical-flow drift
-rises with injected shift, rotation and elastic warps (Spearman rho 0.98), and benign fog/night/rain/blur edits sit
-9–19x below geometric corruptions of 2 px or more. Weaknesses: the essential-matrix rotation signal is noisier
-(rho 0.64–0.83), and `edge_precision` barely separates a single pasted-in object from benign edits (0.92 vs 0.88).
-See [results/drift/validation.md](results/drift/validation.md). Needs repeating on real photos (`--images`).
+| sampler | DINOv2 lift [95% CI] | DINOv2 coverage | CLIP lift | CLIP coverage |
+|---|---|---|---|---|
+| random | 0.93 [0.59, 1.43] | 70% | 0.93 | 70% |
+| flat k-means | 1.46 [1.00, 2.08] | 85% | 1.45 | 85% |
+| hierarchical k-means, sqrt-balanced | 2.75 [2.18, 3.20] | 95% | 2.04 | 95% |
+| hierarchical k-means, balanced | 4.49 [4.08, 4.85] | 100% | 2.60 | 85% |
+| **greedy k-center** | **4.83 [4.50, 5.15]** | **100%** | **4.35** | **100%** |
 
-**Project 2 — photometric consistency cannot see translation along the surfaces.** A common shift of all cameras
-along a direction tangent to the ground and walls keeps every LiDAR point on its surface, so multi-view
-consistency does not change. On a straight path the residual error after a coarse-to-fine solve is 8.7 cm along
-the direction of travel (walls) or 25 cm sideways (open road), against under 1 cm along the ground normal. A
-curved path cuts the walls case to 4 cm, because the heading differs between frames.
-**Negative result:** a road-plane prior on camera height, pitch and roll did not help (it only constrains
-directions that are already well observed). Fixing the weak directions needs scene structure or a geometric
-term. Linear (Cramer-Rao) uncertainty is optimistic here, because it ignores systematic model error.
-Quick run (1 trial per cell): [results/calibration_quick/report.md](results/calibration_quick/report.md); the full
-run is `python -m dgeo.calibration.experiments`.
-
-**Project 1 — a balanced hierarchy only works with fine leaves.** On synthetic long-tailed embeddings,
-hierarchical k-means with leaf clusters about 8x the budget lifts rare-scene representation to about 2x random
-(random 0.84x), close to greedy k-center (2.3x). With leaves equal to the budget it degenerates to flat k-means,
-which under-samples rare scenes (about 0.5x random in the 3-seed demo run). Real-data numbers are still to come.
-
-## Quick start (CPU, no data needed)
+- **Embedding-based curation finds rare scenes much better than random**: 4 to 5 times over-represented at 5%, and every rare scene covered
+  against 70% for random.
+- **It is not free of trade-offs.** At a 1% budget the balanced samplers work (lift about 10) but the sqrt-balanced one and flat k-means
+  fail (lift under 1); k-center chases outliers, so some of what it picks may simply be odd rather than rare. The weather tag has only one
+  rare value (fog, 13 images), so its numbers are too noisy to rank samplers.
+- **The two models mostly agree on what is rare** (linear CKA 0.72, Spearman 0.73 between rarity scores) but agree on the top 5% only 21%.
 
 ```bash
-pip install -r requirements.txt          # plus a PyTorch build, see LAB_GUIDE.md
-pip install -e . --no-deps
-python -m pytest tests -q                # 11 tests, about 15 s
-python -m dgeo.drift.validate_metric     # drift-metric validation
-python -m dgeo.calibration.experiments --quick
-python -m dgeo.curation.run --demo
-python -m dgeo.curation.localization --demo
+pip install -r requirements.txt && pip install -e . --no-deps
+python -m dgeo.curation.prepare_bdd --out data/bdd         # manifest + 9,992 images (about 1.3 GB)
+python -m dgeo.curation.embed_cli --manifest data/bdd/manifest.csv --models facebook/dinov2-small openai/clip-vit-base-patch32 --out data/bdd
+python -m dgeo.curation.run --emb dinov2=data/bdd/emb_dinov2-small.npz clip=data/bdd/emb_clip-vit-base-patch32.npz \
+    --manifest data/bdd/manifest.csv --tags weather,time_of_day,scene --out results/curation_bdd
 ```
 
-## Real data
+## 2. Did a weather edit keep the road where it was? A geometry-drift metric
 
-* **ZOD** (Zenseact Open Dataset, CC BY-SA 4.0): `pip install zod`, download a small subset with `zod download`,
-  then `python -m dgeo.curation.prepare_zod inspect ...` (prints what the SDK really exposes), `manifest`,
-  `python -m dgeo.curation.embed_cli ...`, `python -m dgeo.curation.run ...`. The tag names in
-  `prepare_zod.py` are candidates and **have not been checked against real ZOD files**.
-* **KITTI-360** (fisheye + LiDAR + calibration, CC BY-NC-SA 3.0, registration required) is the intended source for
-  the calibration project. A loader is not written yet.
-* Localization ground truth for ZOD frames is unverified; MSLS is the fallback.
+Generative weather edits can move lane lines and cars. The metric compares an original and an edited image with dense optical flow, sparse
+SIFT matches with RANSAC and an essential-matrix rotation. It is validated on **30 real BDD100K daytime photos** with edits of known
+effect applied on top (shifts, rotations and elastic warps of injected size; benign fog, night, rain and blur; pasted-in objects):
 
-## GPU parts (written, not yet run)
+- **Dose-response**: dense and sparse displacement rise with injected shift, rotation and warp (Spearman rho **0.98**); the essential-matrix
+  rotation is weaker (0.36 to 0.82).
+- **Specificity**: benign edits have median dense drift 0.09 px against 2.63 px for corruptions of 2 px or more, a **28x** separation (9.7x
+  for the sparse metric).
+- **Hallucination**: edge precision falls from 0.95 on benign edits to 0.89 when six objects are pasted in, but one pasted object (0.97) is not
+  detected.
+
+Edits are synthetic by design (that is how the truth is known); the photos are real. Results are in `results/drift/`. This validates the
+metric only: no generative edit model was run.
 
 ```bash
-python scripts/lab_check.py              # what the machine can do
-python scripts/lab_run.py gs-smoke       # Gaussian-splatting calibration smoke test on synthetic data
-python -m dgeo.drift.edit_controlnet --images data/imgs --out data/edited      # depth-conditioned weather edits
+python -m dgeo.drift.validate_metric --images data/bdd/drift_images
+pytest        # 9 tests: samplers, curation metrics, retrieval, camera geometry, edit and drift functions (on small hand-built arrays)
 ```
-
-See [LAB_GUIDE.md](LAB_GUIDE.md) for the exact lab-computer procedure.
 
 ## Layout
 
 ```
-dgeo/                shared: embed, retrieval, match (SIFT + RANSAC), geometry (cameras, poses), stats, synth
-dgeo/curation/       samplers (random, k-means, k-center, hierarchical k-means), metrics, run, localization
-dgeo/calibration/    scene (synthetic rig), core (loss, observability, solver, road prior), experiments, gs_calib
-dgeo/drift/          metrics, synth_edits, validate_metric, score_pairs, edit_controlnet
-scripts/             lab_check, lab_run, pack_results
-tests/               11 tests
+dgeo/embed.py, retrieval.py, match.py, geometry.py, stats.py      shared pieces
+dgeo/curation/   prepare_bdd, embed_cli, samplers, metrics, run   study 1
+dgeo/drift/      metrics, synth_edits, validate_metric             study 2
 ```
 
-## Honest limitations
-
-* The calibration study's scene is analytic planes with a synthetic texture; real scenes have edges, poles and
-  moving objects that would change which directions are observable.
-* Project 3 conditions on monocular depth, a stand-in for occupancy or LiDAR-projected depth.
-* Classical SIFT/RANSAC is the matcher on CPU; LightGlue is not wired in yet.
-* ZOD and KITTI-360 licences must be respected: credit the datasets and keep the data out of this repository.
+Data: Yu et al., "BDD100K", CVPR 2020 (BSD-3), via the FiftyOne copy at `dgural/bdd100k`; the images are not redistributed here.

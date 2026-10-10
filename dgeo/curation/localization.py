@@ -71,13 +71,8 @@ def main():
     ap.add_argument("--thr", type=float, default=25.0)
     ap.add_argument("--samplers", default=",".join(SAMPLERS))
     ap.add_argument("--out", default="results/localization")
-    ap.add_argument("--demo", action="store_true")
     a = ap.parse_args()
-    if a.demo:
-        from dgeo.synth import make_synthetic_vpr
-
-        db_emb, db_xy, q_emb, q_xy = make_synthetic_vpr()
-    else:
+    if True:
         dbz, qz = np.load(a.db_emb, allow_pickle=True), np.load(a.q_emb, allow_pickle=True)
         dbm, qm = pd.read_csv(a.db_manifest), pd.read_csv(a.q_manifest)
         def align(z, m):
