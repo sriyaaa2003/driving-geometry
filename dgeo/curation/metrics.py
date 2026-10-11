@@ -7,10 +7,15 @@ from scipy.stats import spearmanr
 from dgeo.retrieval import knn_cosine
 
 
+UNLABELLED = {"undefined", "NA", "nan", ""}
+
+
 def rare_values(tag: np.ndarray, rare_frac: float = 0.05):
+    """Tag values that make up at most rare_frac of the data. Unlabelled values ('undefined') are not
+    scenes and are never counted as rare."""
     vals, counts = np.unique(tag, return_counts=True)
     freq = counts / counts.sum()
-    return {v: f for v, f in zip(vals, freq) if f <= rare_frac}
+    return {v: f for v, f in zip(vals, freq) if f <= rare_frac and v not in UNLABELLED}
 
 
 def tag_metrics(selected: np.ndarray, tag: np.ndarray, rare_frac: float = 0.05) -> dict:

@@ -74,7 +74,7 @@ class Pair:
     """Frames of one drive segment for the camera pair (A fixed, B estimated)."""
 
     def __init__(self, log, frames, cam_a: str, cam_b: str, device: str, down: int, max_pts: int = 20000,
-                 seed: int = 0):
+                 seed: int = 0, zmin: float = 4.0, zmax: float = 50.0):
         self.log, self.cam_a, self.cam_b, self.device = log, cam_a, cam_b, device
         self.down = down
         self.T_a = torch.tensor(log.cam_to_ego(cam_a), dtype=torch.float32, device=device)
@@ -102,7 +102,7 @@ class Pair:
                              self.ib_cfg, 1 / down)
             Ha, Wa = ga.shape
             Hb, Wb = gb.shape
-            m = ((za > 4) & (za < 50) & (zb > 4) & (zb < 50) & (ua[:, 0] > 8) & (ua[:, 0] < Wa - 8)
+            m = ((za > zmin) & (za < zmax) & (zb > zmin) & (zb < zmax) & (ua[:, 0] > 8) & (ua[:, 0] < Wa - 8)
                  & (ua[:, 1] > 8) & (ua[:, 1] < Ha - 8) & (ub[:, 0] > 8) & (ub[:, 0] < Wb - 8)
                  & (ub[:, 1] > 8) & (ub[:, 1] < Hb - 8))
             idx = torch.nonzero(m)[:, 0]
@@ -177,8 +177,9 @@ def segment_stats(log, frames) -> dict[str, float]:
     return {"heading_change_deg": float(abs(yaw)), "path_m": float(np.linalg.norm(p1[:3, 3] - p0[:3, 3]))}
 
 
-def run_segment(log, frames, cam_a, cam_b, device, down, n_trials, seed, rot_deg=0.5, trans_cm=5.0):
-    pair = Pair(log, frames, cam_a, cam_b, device, down, seed=seed)
+def run_segment(log, frames, cam_a, cam_b, device, down, n_trials, seed, rot_deg=0.5, trans_cm=5.0,
+                zmin=4.0, zmax=50.0, start_at_truth=False, tag="main"):
+    pair = Pair(log, frames, cam_a, cam_b, device, down, seed=seed, zmin=zmin, zmax=zmax)
     if len(pair.data) < max(3, len(frames) // 2):
         return []
     rng = np.random.default_rng(seed)
@@ -194,9 +195,13 @@ def run_segment(log, frames, cam_a, cam_b, device, down, n_trials, seed, rot_deg
         l_true = float(pair.loss(torch.zeros(6, device=device)))
     for t in range(n_trials):
         th0 = np.concatenate([np.radians(rng.normal(0, rot_deg, 3)), rng.normal(0, trans_cm / 100, 3)])
+        if start_at_truth:
+            th0 = np.zeros(6)
         th = pair.solve(torch.tensor(th0, dtype=torch.float32, device=device)).cpu().numpy()
         err0, err = to_ego_axes(T_b, th0), to_ego_axes(T_b, th)
-        rows.append(dict(cam_b=cam_b, trial=t, n_points=pair.n_points(), n_frames=len(pair.data), sigma=sigma,
+        rows.append(dict(experiment=tag, method="photometric", cam_b=cam_b, trial=t, zmin=zmin, zmax=zmax,
+                         rot_sigma_deg=rot_deg, trans_sigma_cm=trans_cm,
+                         n_points=pair.n_points(), n_frames=len(pair.data), sigma=sigma,
                          loss_true=l_true, **{f"init_{k}": v for k, v in zip(_names(), err0)},
                          **{f"err_{k}": v for k, v in zip(_names(), err)},
                          **{f"crb_{k}": v for k, v in zip(_names(), crb_ego)}, **segment_stats(log, frames)))

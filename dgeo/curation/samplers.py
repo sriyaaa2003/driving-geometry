@@ -160,3 +160,7 @@ SAMPLERS = {
     "hier_balanced": lambda e, k, seed=0, **kw: hierarchical_kmeans(e, k, seed, alpha=0.0, **kw),
     "hier_sqrt": lambda e, k, seed=0, **kw: hierarchical_kmeans(e, k, seed, alpha=0.5, **kw),
 }
+
+from dgeo.curation.baselines import d4, proto_hard, semdedup  # noqa: E402
+
+SAMPLERS.update({"semdedup": semdedup, "d4": d4, "proto_hard": proto_hard})
