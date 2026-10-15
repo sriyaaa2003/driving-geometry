@@ -5,6 +5,7 @@ Every sampler has the signature  f(emb, k, seed=0, **kw) -> np.ndarray of k uniq
 from __future__ import annotations
 
 import numpy as np
+from scipy.sparse import csr_matrix
 from sklearn.cluster import KMeans, MiniBatchKMeans
 
 
@@ -71,8 +72,27 @@ def water_fill(budget: int, caps: np.ndarray, weights: np.ndarray, rng) -> np.nd
     return alloc
 
 
+_TREE_CACHE: dict = {}
+
+
 def build_kmeans_tree(emb: np.ndarray, level_sizes, seed: int = 0):
-    """Bottom-up hierarchical k-means: level 1 clusters the points, level l+1 clusters level-l centroids."""
+    """Bottom-up hierarchical k-means: level 1 clusters the points, level l+1 clusters level-l centroids.
+
+    The tree depends only on (data, levels, seed), so the balanced and size-weighted samplers, which differ only in how
+    they split the budget over the same tree, share one fit (keyed by a hash of the data; the last 4 trees are kept)."""
+    import hashlib
+
+    key = (hashlib.md5(np.ascontiguousarray(emb).tobytes()).hexdigest(), tuple(level_sizes), seed)
+    if key in _TREE_CACHE:
+        return _TREE_CACHE[key]
+    tree = _build_kmeans_tree(emb, level_sizes, seed)
+    if len(_TREE_CACHE) >= 4:
+        _TREE_CACHE.pop(next(iter(_TREE_CACHE)))
+    _TREE_CACHE[key] = tree
+    return tree
+
+
+def _build_kmeans_tree(emb: np.ndarray, level_sizes, seed: int = 0):
     labels = []
     centers = []
     cur = emb
@@ -84,7 +104,9 @@ def build_kmeans_tree(emb: np.ndarray, level_sizes, seed: int = 0):
             km = KMeans(n_clusters=c, random_state=seed, n_init=1, max_iter=50).fit(cur)
         lab = km.labels_
         uniq, lab = np.unique(lab, return_inverse=True)  # drop empty clusters
-        ctr = np.stack([cur[lab == j].mean(0) for j in range(len(uniq))])
+        # cluster means via a sparse membership matrix (same result as averaging cur[lab == j], without a pass over all points per cluster)
+        member = csr_matrix((np.ones(len(lab)), (lab, np.arange(len(lab)))), shape=(len(uniq), len(lab)))
+        ctr = np.asarray(member @ cur) / np.bincount(lab, minlength=len(uniq))[:, None]
         ctr /= np.linalg.norm(ctr, axis=1, keepdims=True) + 1e-12
         labels.append(lab)
         centers.append(ctr)
@@ -104,13 +126,13 @@ def default_levels(n: int, k: int, branching: int = 4, leaf_mult: int = 8, min_t
 
 
 def hierarchical_kmeans(emb: np.ndarray, k: int, seed: int = 0, levels=None, alpha: float = 0.0,
-                        **_) -> np.ndarray:
+                        leaf_mult: int = 8, **_) -> np.ndarray:
     """Hierarchical k-means sampling. The budget is split top-down; at each node children receive
     budget proportional to (points beneath)^alpha. alpha=0: balanced across clusters at every level
     (favours rare scenes); alpha=1: proportional to size (statistically close to random).
     Inside a leaf cluster the point nearest the centroid is taken first, the rest at random."""
     rng = np.random.default_rng(seed)
-    levels = levels or default_levels(len(emb), k)
+    levels = levels or default_levels(len(emb), k, leaf_mult=leaf_mult)
     labels, centers = build_kmeans_tree(emb, levels, seed)
     n_levels = len(labels)
     # number of points under every node, per level

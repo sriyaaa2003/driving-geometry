@@ -1,0 +1,12 @@
+100000 frames, PCA 128, tags {'condition': 6, 'road_type': 5, 'country': 14} (27s)
+[coverage] budget 0.01 done (148s)
+[coverage] budget 0.05 done (1539s)
+[coverage] report written (1791s)
+[downstream] split 0 done (2497s)
+C:\Users\sriya\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\joblib\externals\loky\process_executor.py:782: UserWarning: A worker stopped while some jobs were given to the executor. This can be caused by a too short worker timeout or by a memory leak.
+  warnings.warn(
+[downstream] split 1 done (3288s)
+C:\Users\sriya\AppData\Local\Packages\PythonSoftwareFoundation.Python.3.13_qbz5n2kfra8p0\LocalCache\local-packages\Python313\site-packages\joblib\externals\loky\process_executor.py:782: UserWarning: A worker stopped while some jobs were given to the executor. This can be caused by a too short worker timeout or by a memory leak.
+  warnings.warn(
+[downstream] split 2 done (3870s)
+ALL DONE (3871s)
